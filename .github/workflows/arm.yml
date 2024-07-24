@@ -1,0 +1,89 @@
+name: ARMv8 CI
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  ARMv8:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: temurin
+          cache: gradle
+
+      - name: Set up node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install Dependencies
+        run: |
+          npm install --global yarn
+          cd ./.github/workflows
+          yarn add node-telegram-bot-api commander
+      
+      - name: Grant Execute Permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Setup NPM Dependencies
+        run: npm install typescript -g
+
+      - name: Build
+        run: ./gradlew assembleArmv8Debug
+        
+      - name: Determine the latest Build Tools version installed
+        shell: bash
+        run: echo "BUILD_TOOL_VERSION=$(ls "$ANDROID_HOME/build-tools/" | tail -n 1)" >> $GITHUB_ENV
+
+      - name: Git branch name
+        id: git-branch-name
+        uses: EthanSK/git-branch-name-action@main
+
+      - name: Sign APK
+        id: sign_app
+        uses: SnapEnhance/sign-android-release@master
+        with:
+          releaseDirectory: app/build/outputs/apk/armv8/debug/
+          signingKeyBase64: ${{ secrets.BACE64 }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: ${{ env.BUILD_TOOL_VERSION }}
+
+      - name: Get current build version
+        id: version-env
+        run: |
+          ./gradlew getVersion
+          echo "version=$(cat app/build/version.txt)" >> $GITHUB_ENV
+
+      - name: Delete unsigned APK file and rename the signed one
+        run: |
+          find app/build/outputs/apk/armv8/debug/ -type f ! -name '*-signed*' -delete
+          mv ${{steps.sign_app.outputs.signedReleaseFile}} app/build/outputs/apk/armv8/debug/snapenhance-${{ env.version }}-armv8-${GITHUB_SHA::7}.apk
+          
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SnapEnhance
+          path: app/build/outputs/apk/armv8/debug/*.apk
+      - name: zip
+        run: zip -r ARMv8.zip app/build/outputs/apk/armv8/debug/*.apk -j
+        
+      - name: send Apk
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          document: ARMv8.zip
+          
+      - name: CI Upload to Telegram
+        run: node ./.github/workflows/upload.js -t "${{ secrets.TELEGRAM_BOT_TOKEN }}" -f ARMv8.zip --caption "A new commit has been pushed to the ${{ env.GIT_BRANCH_NAME }} branch! ${GITHUB_SHA::7}" --chatid "${{ secrets.TELEGRAM_CHAT_ID }}"
