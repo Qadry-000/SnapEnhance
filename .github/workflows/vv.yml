@@ -41,6 +41,10 @@ jobs:
             git push -f
           else
             echo "in sync"
+            git push origin
+            git rebase -X ours upstream/dev
+            git push --tags -f
+            git push -f
           fi
       - name: Delete old workflow runs
         uses: Mattraks/delete-workflow-runs@v2
