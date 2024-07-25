@@ -70,6 +70,9 @@ jobs:
         with:
           name: snapenhance-armv8-release
           path: ${{steps.sign_app.outputs.signedReleaseFile}}
+          
+      - name: zip
+        run: zip -r armv8.zip ${{steps.sign_app.outputs.signedReleaseFile}} -j
 
       - name: CI Upload to Telegram
         run: node ./.github/workflows/upload.js -t "${{ secrets.TELEGRAM_BOT_TOKEN }}" -f ${{steps.sign_app.outputs.signedReleaseFile}} --caption "A new commit has been pushed to the ${{ env.GIT_BRANCH_NAME }} branch! ${GITHUB_SHA::7}" --chatid "${{ secrets.TELEGRAM_CHAT_ID }}"
