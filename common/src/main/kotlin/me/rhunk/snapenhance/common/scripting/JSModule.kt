@@ -92,6 +92,13 @@ class JSModule(
                 field.get(obj)
             }
 
+            moduleObject.putFunction("byte") { args ->
+                val byt = args?.get(0) as? Number ?: return@putFunction Undefined.instance
+                byteArray(byt.toInt())
+                
+            }
+            
+
             moduleObject.putFunction("sleep") { args ->
                 val time = args?.get(0) as? Number ?: return@putFunction Undefined.instance
                 Thread.sleep(time.toLong())
