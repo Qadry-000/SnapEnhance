@@ -93,7 +93,7 @@ class JSModule(
 
             moduleObject.putFunction("byte") { args ->
                 val byt = args?.get(0) as? Number ?: return@putFunction Undefined.instance
-                byteArray(byt.toInt())
+                ByteArray(byt.toInt())
                 
             }
             
