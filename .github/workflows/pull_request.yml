@@ -1,4 +1,4 @@
-name: Pull Request CI
+name: Pull Requst CI
 on:
   pull_request:
     branches: ["dev"]
